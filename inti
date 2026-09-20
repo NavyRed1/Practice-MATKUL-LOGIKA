@@ -1,0 +1,441 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LSD - Logics and Discrete Structures Quiz</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#0ea5e9',
+                        secondary: '#6366f1',
+                        dark: '#0f172a',
+                        light: '#f8fafc'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="text-slate-800 antialiased min-h-screen flex flex-col">
+    <div id="root" class="flex-grow flex flex-col"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+
+        // This engine creates infinite variations based on the 20 reference questions from the PDFs
+        class QuestionGenerator {
+            static generate() {
+                const types = ['translation', 'translation_id', 'evaluation', 'equivalence'];
+                const selectedType = types[Math.floor(Math.random() * types.length)];
+                
+                switch(selectedType) {
+                    case 'translation': return this.generateTranslationEN();
+                    case 'translation_id': return this.generateTranslationID();
+                    case 'evaluation': return this.generateEvaluation();
+                    case 'equivalence': return this.generateEquivalence();
+                    default: return this.generateTranslationEN();
+                }
+            }
+
+            // Based on Exercise 1 & Lecture Note 2 (Speeding ticket, Internet, Freezing)
+            static generateTranslationEN() {
+                const contexts = [
+                    { p: "you drive over 65 mph", q: "you get a speeding ticket" },
+                    { p: "it is below freezing", q: "it is snowing" },
+                    { p: "you learn discrete math", q: "you find a good job" },
+                    { p: "you are a CS major", q: "you can access the internet" }
+                ];
+                
+                const context = contexts[Math.floor(Math.random() * contexts.length)];
+                const templates = [
+                    { text: `If ${context.p}, then ${context.q}.`, logic: "p → q" },
+                    { text: `${context.p} and ${context.q}.`, logic: "p ∧ q" },
+                    { text: `${context.p} but not ${context.q}.`, logic: "p ∧ ¬q" },
+                    { text: `You do not ${context.p.replace('you ', '')}.`, logic: "¬p" },
+                    { text: `${context.p} is sufficient for ${context.q.replace('you ', '')}.`, logic: "p → q" },
+                    { text: `Whenever ${context.q}, ${context.p}.`, logic: "q → p" },
+                    { text: `That ${context.p} is necessary and sufficient for ${context.q.replace('you ', '')}.`, logic: "p ↔ q" },
+                    { text: `It is either ${context.p.replace('it is ', '')} or ${context.q.replace('it is ', '')}.`, logic: "p ∨ q" }
+                ];
+
+                const distractors = ["p ∧ q", "p ∨ q", "p → q", "q → p", "p ↔ q", "¬p", "¬p ∧ ¬q", "¬p → ¬q", "p ∧ ¬q"];
+                return this.buildQuestion(
+                    "English Translation",
+                    `Let p = "${context.p}" and q = "${context.q}".\nHow do you express the following logically?\n\n"${templates[0].text}"`,
+                    templates,
+                    distractors
+                );
+            }
+
+            // Based on Exercise 1 Q1 (Hari ini mendung, hari ini hujan)
+            static generateTranslationID() {
+                const templates = [
+                    { text: "Hari ini mendung dan hari ini hujan.", logic: "p ∧ q" },
+                    { text: "Hari ini mendung, tetapi tidak hujan.", logic: "p ∧ ¬q" },
+                    { text: "Hari ini tidak mendung dan tidak hujan.", logic: "¬p ∧ ¬q" },
+                    { text: "Hari ini hujan, atau mendung, atau kedua-duanya.", logic: "q ∨ p" },
+                    { text: "Jika hari ini mendung, hari ini juga hujan.", logic: "p → q" },
+                    { text: "Bahwa hari ini mendung, adalah perlu dan cukup untuk hari ini hujan.", logic: "p ↔ q" }
+                ];
+                
+                const distractors = ["p ∧ q", "p ∨ q", "p → q", "q → p", "p ↔ q", "¬p ∧ ¬q", "p ∧ ¬q", "q ∨ p"];
+                return this.buildQuestion(
+                    "Indonesian Translation",
+                    `Diberikan proposisi:\np = hari ini mendung\nq = hari ini hujan\n\nTuliskanlah notasi logika untuk:\n\n"${templates[0].text}"`,
+                    templates,
+                    distractors
+                );
+            }
+
+            // Based on Truth Table evaluations from Lecture 2
+            static generateEvaluation() {
+                const pVal = Math.random() > 0.5;
+                const qVal = Math.random() > 0.5;
+                
+                const formulas = [
+                    { expr: "p ∧ q", val: pVal && qVal },
+                    { expr: "p ∨ q", val: pVal || qVal },
+                    { expr: "p ⊕ q", val: pVal !== qVal },
+                    { expr: "p → q", val: !pVal || qVal },
+                    { expr: "p ↔ q", val: pVal === qVal },
+                    { expr: "¬p ∨ q", val: !pVal || qVal },
+                    { expr: "¬(p ∧ q)", val: !(pVal && qVal) }
+                ];
+                
+                const chosen = formulas[Math.floor(Math.random() * formulas.length)];
+                const correctAns = chosen.val ? "True" : "False";
+                
+                return {
+                    category: "Truth Evaluation",
+                    text: `If p is ${pVal ? 'True' : 'False'} and q is ${qVal ? 'True' : 'False'}, what is the truth value of the compound proposition:\n\n${chosen.expr}`,
+                    options: this.shuffleArray(["True", "False"]),
+                    correct: correctAns,
+                    explanation: `By definition, ${chosen.expr} evaluates to ${correctAns} when p=${pVal} and q=${qVal}.`
+                };
+            }
+
+            // Based on Exercise 2 & Lecture 3a Logical Equivalence Proofs
+            static generateEquivalence() {
+                const equivalents = [
+                    { expr: "p → q", equiv: "¬p ∨ q", rule: "Definition of Implication" },
+                    { expr: "¬(p ∨ q)", equiv: "¬p ∧ ¬q", rule: "De Morgan's Law" },
+                    { expr: "¬(p ∧ q)", equiv: "¬p ∨ ¬q", rule: "De Morgan's Law" },
+                    { expr: "p ∨ (p ∧ q)", equiv: "p", rule: "Absorption Law" },
+                    { expr: "p ↔ q", equiv: "(p → q) ∧ (q → p)", rule: "Definition of Biconditional" },
+                    { expr: "p → q", equiv: "¬q → ¬p", rule: "Contrapositive" },
+                    { expr: "p ∨ ¬p", equiv: "T", rule: "Negation Law (Tautology)" }
+                ];
+
+                const chosen = equivalents[Math.floor(Math.random() * equivalents.length)];
+                let distractors = equivalents.map(e => e.equiv).filter(e => e !== chosen.equiv);
+                // Add some hardcoded tricky distractors
+                distractors.push("¬p ∧ q", "p ∧ ¬q", "F", "p ∨ q");
+                
+                // Shuffle and pick 3 wrong answers
+                distractors = this.shuffleArray([...new Set(distractors)]).slice(0, 3);
+                
+                const options = this.shuffleArray([chosen.equiv, ...distractors]);
+
+                return {
+                    category: "Logical Equivalence",
+                    text: `Which of the following is logically equivalent to:\n\n${chosen.expr}`,
+                    options: options,
+                    correct: chosen.equiv,
+                    explanation: `Based on the ${chosen.rule}, ${chosen.expr} ≡ ${chosen.equiv}.`
+                };
+            }
+
+            static buildQuestion(category, promptTemplate, templates, distractorsPool) {
+                const chosenTemplate = templates[Math.floor(Math.random() * templates.length)];
+                const text = promptTemplate.replace(templates[0].text, chosenTemplate.text);
+                const correct = chosenTemplate.logic;
+                
+                let distractors = distractorsPool.filter(d => d !== correct && d !== "q ∨ p" || (correct === "q ∨ p" ? d!=="p ∨ q" : true));
+                distractors = this.shuffleArray([...new Set(distractors)]).slice(0, 3);
+                
+                const options = this.shuffleArray([correct, ...distractors]);
+                
+                return {
+                    category,
+                    text,
+                    options,
+                    correct,
+                    explanation: `The correct logical notation is ${correct}.`
+                };
+            }
+
+            static shuffleArray(array) {
+                const arr = [...array];
+                for (let i = arr.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [arr[i], arr[j]] = [arr[j], arr[i]];
+                }
+                return arr;
+            }
+        }
+
+        const DeployModal = ({ isOpen, onClose }) => {
+            if (!isOpen) return null;
+            return (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 relative">
+                        <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-700">
+                            <i className="fas fa-times text-xl"></i>
+                        </button>
+                        <h2 className="text-2xl font-bold text-slate-800 mb-4"><i className="fab fa-github mr-2"></i>How to Publish to GitHub & Vercel</h2>
+                        
+                        <div className="space-y-4 text-sm text-slate-600">
+                            <p>Because this entire application is contained within a single HTML file, deploying it is incredibly fast and completely free.</p>
+                            
+                            <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                <h3 className="font-semibold text-slate-800 mb-2">Step 1: GitHub</h3>
+                                <ul className="list-decimal pl-5 space-y-1">
+                                    <li>Save this code as <code>index.html</code> on your computer.</li>
+                                    <li>Go to <a href="https://github.com/new" target="_blank" className="text-primary hover:underline">github.com/new</a> and create a new repository.</li>
+                                    <li>Upload your <code>index.html</code> file to the root of that repository.</li>
+                                    <li>Commit the changes.</li>
+                                </ul>
+                            </div>
+
+                            <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                <h3 className="font-semibold text-slate-800 mb-2">Step 2: Vercel</h3>
+                                <ul className="list-decimal pl-5 space-y-1">
+                                    <li>Go to <a href="https://vercel.com/new" target="_blank" className="text-primary hover:underline">vercel.com/new</a>.</li>
+                                    <li>Connect your GitHub account and select the repository you just created.</li>
+                                    <li>Leave all settings as default (Framework Preset: Other) and click <strong>Deploy</strong>.</li>
+                                    <li>Within seconds, your Quiz app will be live on a shareable URL!</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div className="mt-6 text-center">
+                            <button onClick={onClose} className="px-6 py-2 bg-slate-800 text-white font-medium rounded-lg hover:bg-slate-700 transition-colors">
+                                Got it, let's play!
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        const App = () => {
+            const [gameState, setGameState] = useState('menu'); // menu, playing, feedback
+            const [currentQuestion, setCurrentQuestion] = useState(null);
+            const [score, setScore] = useState(0);
+            const [streak, setStreak] = useState(0);
+            const [questionsAnswered, setQuestionsAnswered] = useState(0);
+            const [selectedAnswer, setSelectedAnswer] = useState(null);
+            const [showDeployModal, setShowDeployModal] = useState(false);
+
+            const startQuiz = () => {
+                setScore(0);
+                setStreak(0);
+                setQuestionsAnswered(0);
+                generateNextQuestion();
+                setGameState('playing');
+            };
+
+            const generateNextQuestion = () => {
+                setSelectedAnswer(null);
+                setCurrentQuestion(QuestionGenerator.generate());
+                setGameState('playing');
+            };
+
+            const handleAnswer = (answer) => {
+                if (gameState === 'feedback') return;
+                
+                setSelectedAnswer(answer);
+                const isCorrect = answer === currentQuestion.correct;
+                
+                if (isCorrect) {
+                    setScore(s => s + 5);
+                    setStreak(s => s + 1);
+                } else {
+                    setScore(s => s - 2); // Following the scoring rule from Exercise 1 Q3 (-2 for false)
+                    setStreak(0);
+                }
+                
+                setQuestionsAnswered(q => q + 1);
+                setGameState('feedback');
+            };
+
+            return (
+                <div className="flex-grow flex flex-col items-center py-10 px-4">
+                    {/* Header */}
+                    <header className="w-full max-w-4xl flex justify-between items-center mb-10">
+                        <div>
+                            <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary">
+                                <i className="fas fa-project-diagram mr-2 text-primary"></i>LSD
+                            </h1>
+                            <p className="text-sm text-slate-500 font-medium">Logics & Discrete Structures</p>
+                        </div>
+                        <div className="flex gap-4">
+                            <button onClick={() => setShowDeployModal(true)} className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 text-sm font-semibold rounded-lg hover:bg-slate-50 shadow-sm transition-all">
+                                <i className="fas fa-cloud-upload-alt text-primary"></i> Deploy
+                            </button>
+                        </div>
+                    </header>
+
+                    {/* Main Content Area */}
+                    <main className="w-full max-w-2xl">
+                        
+                        {gameState === 'menu' && (
+                            <div className="glass-panel p-10 rounded-3xl text-center animate-fade-in border-t-4 border-t-primary">
+                                <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                                    <i className="fas fa-brain text-4xl text-blue-600"></i>
+                                </div>
+                                <h2 className="text-3xl font-bold text-slate-800 mb-4">Propositional Logic Quiz Engine</h2>
+                                <p className="text-slate-600 mb-8 max-w-md mx-auto leading-relaxed">
+                                    Test your knowledge on Logical Equivalence, Tautologies, Truth Tables, and Logic Translations based on ES234103. 
+                                    <br/><br/>
+                                    <span className="bg-slate-100 px-2 py-1 rounded text-sm font-mono text-slate-500">Procedurally generated for infinite practice!</span>
+                                </p>
+                                <button 
+                                    onClick={startQuiz}
+                                    className="px-8 py-3 bg-gradient-to-r from-primary to-secondary text-white font-bold rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200"
+                                >
+                                    Start Practice Session
+                                </button>
+                            </div>
+                        )}
+
+                        {(gameState === 'playing' || gameState === 'feedback') && currentQuestion && (
+                            <div className="animate-fade-in w-full">
+                                {/* Stats Bar */}
+                                <div className="flex justify-between items-center mb-6 px-2">
+                                    <div className="flex items-center gap-2">
+                                        <div className="bg-white px-3 py-1.5 rounded-lg font-bold text-slate-700 shadow-sm border border-slate-100">
+                                            Score: <span className={score >= 0 ? 'text-green-600' : 'text-red-500'}>{score}</span>
+                                        </div>
+                                        {streak >= 3 && (
+                                            <div className="bg-orange-100 text-orange-600 px-3 py-1.5 rounded-lg font-bold shadow-sm flex items-center gap-1 animate-pulse">
+                                                <i className="fas fa-fire"></i> {streak} Streak!
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="text-sm font-semibold text-slate-500 bg-slate-200/50 px-3 py-1 rounded-full">
+                                        Questions: {questionsAnswered}
+                                    </div>
+                                </div>
+
+                                {/* Question Card */}
+                                <div className="glass-panel p-8 rounded-3xl mb-6 relative overflow-hidden">
+                                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary to-secondary"></div>
+                                    
+                                    <span className="inline-block px-3 py-1 bg-blue-100 text-blue-700 text-xs font-bold uppercase tracking-wider rounded-full mb-4">
+                                        {currentQuestion.category}
+                                    </span>
+                                    
+                                    <h3 className="text-xl font-medium text-slate-800 whitespace-pre-wrap leading-relaxed mb-8">
+                                        {currentQuestion.text}
+                                    </h3>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        {currentQuestion.options.map((opt, idx) => {
+                                            const isSelected = selectedAnswer === opt;
+                                            const isCorrect = opt === currentQuestion.correct;
+                                            
+                                            let btnClass = "w-full text-left px-5 py-4 rounded-xl border-2 font-mono text-lg transition-all duration-200 relative ";
+                                            
+                                            if (gameState === 'playing') {
+                                                btnClass += "border-slate-200 bg-white hover:border-primary hover:bg-blue-50 text-slate-700";
+                                            } else if (gameState === 'feedback') {
+                                                if (isCorrect) {
+                                                    btnClass += "border-green-500 bg-green-50 text-green-800 z-10 scale-[1.02] shadow-md";
+                                                } else if (isSelected && !isCorrect) {
+                                                    btnClass += "border-red-400 bg-red-50 text-red-700";
+                                                } else {
+                                                    btnClass += "border-slate-100 bg-slate-50 text-slate-400 opacity-60";
+                                                }
+                                            }
+
+                                            return (
+                                                <button 
+                                                    key={idx} 
+                                                    onClick={() => handleAnswer(opt)}
+                                                    disabled={gameState === 'feedback'}
+                                                    className={btnClass}
+                                                >
+                                                    {opt}
+                                                    {gameState === 'feedback' && isCorrect && (
+                                                        <i className="fas fa-check-circle absolute right-4 top-1/2 transform -translate-y-1/2 text-green-500 text-xl"></i>
+                                                    )}
+                                                    {gameState === 'feedback' && isSelected && !isCorrect && (
+                                                        <i className="fas fa-times-circle absolute right-4 top-1/2 transform -translate-y-1/2 text-red-500 text-xl"></i>
+                                                    )}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+
+                                {/* Feedback Area */}
+                                {gameState === 'feedback' && (
+                                    <div className={`p-6 rounded-2xl animate-fade-in flex flex-col sm:flex-row justify-between items-center gap-4 border ${selectedAnswer === currentQuestion.correct ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                                        <div>
+                                            <h4 className={`text-lg font-bold mb-1 ${selectedAnswer === currentQuestion.correct ? 'text-green-700' : 'text-red-700'}`}>
+                                                {selectedAnswer === currentQuestion.correct ? 'Correct! +5 points' : 'Incorrect. -2 points'}
+                                            </h4>
+                                            <p className="text-slate-600 text-sm">
+                                                {currentQuestion.explanation}
+                                            </p>
+                                        </div>
+                                        <button 
+                                            onClick={generateNextQuestion}
+                                            className="whitespace-nowrap px-6 py-3 bg-slate-800 text-white font-bold rounded-xl hover:bg-slate-700 transition-colors shadow-md w-full sm:w-auto"
+                                        >
+                                            Next Question <i className="fas fa-arrow-right ml-2"></i>
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </main>
+
+                    {/* Footer */}
+                    <footer className="mt-auto py-8 text-center text-slate-400 text-sm">
+                        <p>ES234103 - Logics and Discrete Structures • Institut Teknologi Sepuluh Nopember</p>
+                    </footer>
+
+                    <DeployModal isOpen={showDeployModal} onClose={() => setShowDeployModal(false)} />
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
+```
