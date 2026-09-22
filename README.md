@@ -1,1 +1,1 @@
-# Practice-MATKUL-LOGIKA
+# Practice Untuk Matakuliah Logika
